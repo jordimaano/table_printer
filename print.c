@@ -6,9 +6,24 @@
 //needs to create separate functions for repetitive actions
 //reduce cases (if/else)
 //reduce the use of extra variables
-int main()
+void printBorder(int[], int, int, int);
+FILE *fptr;
+
+int main(int argc, char *argv[])
 {
-	char csv[] = "Name,Age,Gender\nJohn,21,Male\nAnna,22,Female\nPatrick,30,Male";
+	if (argc < 2) {
+		printf("Please specify a file to process.\n");
+		printf("Usage: %s <filename>", argv[0]);
+		return 1;
+	}
+	const char *filename = argv[1];
+	fptr = fopen(filename, "r"); 
+	char csv[1000];
+	if(fptr==NULL){
+		printf("Unable to open file.");
+		return 0;
+	}
+
 	int i = 0;
 
 	//declare and set the column and row count to zero first
@@ -18,28 +33,19 @@ int main()
 	rowCount = 0;
 	cellpadding = 1;	
 
-	//bool colCounted is declared to avoid counting if the number of first row is already counted
-	bool colCounted = false;
 
-	//find the number of rows and columns
-	for (i = 0; i < strlen(csv); i++) {
-		//count the columns
-		//added condition to prevent counting more if comma is at the end of line
-		if(csv[i] == ',' && csv[i+1] != '\n'){
-			if(!colCounted)
-				colCount++;
-
-			//continue the count because comma(,) is not included			
-			continue;	
-		}
-
-		//count the rows
-		if(csv[i] == '\n' || i == strlen(csv) - 1) {
-			rowCount++;
-			//stop counting the columns because it is already counted
-			colCounted = true;
-		}
+	//count rows;
+	while(fgets(csv,100,fptr)) {
+		rowCount++;
 	}
+
+	for(i=0; i<strlen(csv); i++)
+	{
+		if(csv[i] == ',')
+			colCount++;
+	}
+	
+
 
 	//find the longest number of characters per column
 
@@ -50,17 +56,22 @@ int main()
 	
 	int charCount = 0;
 	int currentCol = 0;
-	for(i=0; i<strlen(csv); i++) {
-		//denotes that the end of a column is reached
-		if(csv[i] == ',' || csv[i] == '\n') {
-			colspans[currentCol] = (colspans[currentCol] < charCount) ? (charCount) : (colspans[currentCol]);	
-			charCount = 0;
-			currentCol = (csv[i] == '\n') ? 0 : ++currentCol;
-			continue;
+
+	rewind(fptr);
+	while (fgets(csv, 100, fptr)) {
+		currentCol = 0;
+		for(i=0; i<strlen(csv); i++) {
+			//denotes that the end of a column is reached
+			if(csv[i] == ',' || csv[i] == '\n') {
+				colspans[currentCol] = (colspans[currentCol] < charCount) ? (charCount) : (colspans[currentCol]);	
+				charCount = 0;
+				currentCol++;
+				continue;
+			}
+			charCount++;
 		}
-		charCount++;
 	}
-	
+		
 	//find the longest line of a row
 	int longestRow = 0;
 	for(int i=0; i<colCount; i++) {
@@ -68,19 +79,7 @@ int main()
 	}
 
 	//print the top border
-	currentCol = 0;
-	int indexAdded = 0;  
-	for(i=0; i<=longestRow + cellpadding * 2 + colCount; i++) {
-		if(i==0)
-			printf(" +");
-		if(i - indexAdded == colspans[currentCol] + cellpadding*2) {
-			printf("+");
-			indexAdded = i;
-			currentCol++;
-		}	
-		printf("-");
-	}
-	printf("+\n");
+	printBorder(colspans, cellpadding, colCount, longestRow);
 
 	int printedChars = 0;
 	int colIndex = 0;
@@ -89,60 +88,64 @@ int main()
 
 	//print the data
 
-	for(i=0; i<=strlen(csv); i++) {
 
-		if(rowIndex == 1)
-		{
-			//print the top border
-			currentCol = 0;
-			int x = 0;
-			int indexAdded = 0;  
-			for(x=0; x<=longestRow + cellpadding * 2 + colCount; x++) {
-				if(x==0)
-					printf(" +");
-				if(x - indexAdded == colspans[currentCol] + cellpadding*2) {
-					printf("+");
-					indexAdded = x;
-					currentCol++;
-				}	
-				printf("-");
+	rewind(fptr);
+	while(fgets(csv, 100, fptr)) {
+		if(rowIndex == 1) {
+			printBorder(colspans, cellpadding, colCount, longestRow);
+		}
+		printedChars = 0;
+		colIndex = 0;
+		printf(" | ");
+		for(i=0; i<strlen(csv); i++) {
+			if(csv[i] == ',') { 
+
+				if (csv[i+1] != '\n') {
+					for(j=printedChars; j<colspans[colIndex]; j++)
+						printf(" ");
+					printedChars = 0;	
+					colIndex++;
+					printf(" | ");
+				}
+				continue;
 			}
-			printf("+\n");
-			rowIndex++;
-		}
-
-		if(csv[i] == '\n' || i == strlen(csv)) {
-			for(j=printedChars; j<colspans[colIndex]; j++)
-				printf(" ");
-			printf(" |");
+			if(csv[i] == '\n')
+				continue;
 			printf("%c", csv[i]);
-
-			colIndex = 0;
-			printedChars = 0;
-			rowIndex++;
-			continue;
-
+			printedChars++;
 		}
-		if(csv[i] == ',') {
 			for(j=printedChars; j<colspans[colIndex]; j++)
 				printf(" ");
-
-			printf(" | ");
+			printedChars = 0;	
 			colIndex++;
-			printedChars = 0;
-			continue;
-		}
-		if(csv[i-1] == '\n' || i == 0 || i == strlen(csv))
-			printf(" | ");
-		printf("%c", csv[i]);
-		printedChars++;
+		printf(" |");
+		printf("\n");
+		rowIndex++;
 	}
-	printf("\n");
+
+
 	
 	//print the bottom border
-	currentCol = 0;
-	indexAdded = 0;  
-	for(i=0; i<=longestRow + cellpadding * 2 + colCount; i++) {
+	printBorder(colspans, cellpadding, colCount, longestRow);
+	fclose(fptr); 
+	printf("\nRowLength: %d", longestRow);
+
+	printf("\n");
+	for(i=0; i<colCount; i++)
+	{
+		printf("%d\n", colspans[i]);
+	}
+
+	return 0;
+}
+
+void printBorder(int colspans[], int cellpadding, int colCount, int rowLength)
+{
+	//print the top border
+	int currentCol = 0;
+	int indexAdded = 0;  
+	int i;
+	for(i=0; i<rowLength + cellpadding * 2 * colCount; i++) {
 		if(i==0)
 			printf(" +");
 		if(i - indexAdded == colspans[currentCol] + cellpadding*2) {
@@ -153,5 +156,4 @@ int main()
 		printf("-");
 	}
 	printf("+\n");
-	return 0;
 }
