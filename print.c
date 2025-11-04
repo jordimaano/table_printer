@@ -7,6 +7,8 @@
 //reduce cases (if/else)
 //reduce the use of extra variables
 void printBorder(int[], int, int, int);
+
+bool checkQuotation(char[], int);
 FILE *fptr;
 
 int main(int argc, char *argv[])
@@ -39,12 +41,16 @@ int main(int argc, char *argv[])
 		rowCount++;
 	}
 
+	bool insideQuotation = false;
 	for(i=0; i<strlen(csv); i++)
 	{
-		if(csv[i] == ',')
+		//check if the comma is not inside quotations 
+		if(csv[i] == '"' && checkQuotation(csv, i))
+			insideQuotation = !insideQuotation;
+
+		if(csv[i] == ',' && insideQuotation == false) 
 			colCount++;
 	}
-	
 
 
 	//find the longest number of characters per column
@@ -56,13 +62,21 @@ int main(int argc, char *argv[])
 	
 	int charCount = 0;
 	int currentCol = 0;
+	insideQuotation = false;
 
 	rewind(fptr);
+	//count the longest character for each column
 	while (fgets(csv, 100, fptr)) {
 		currentCol = 0;
 		for(i=0; i<strlen(csv); i++) {
+			//ignore quotation marks
+			if(csv[i] == '"' && checkQuotation(csv, i)) {
+				insideQuotation = !insideQuotation;
+				continue;
+			}
+
 			//denotes that the end of a column is reached
-			if(csv[i] == ',' || csv[i] == '\n') {
+			if((csv[i] == ',' && insideQuotation == false) || csv[i] == '\n') {
 				colspans[currentCol] = (colspans[currentCol] < charCount) ? (charCount) : (colspans[currentCol]);	
 				charCount = 0;
 				currentCol++;
@@ -89,6 +103,7 @@ int main(int argc, char *argv[])
 	//print the data
 
 
+	insideQuotation = false;
 	rewind(fptr);
 	while(fgets(csv, 100, fptr)) {
 		if(rowIndex == 1) {
@@ -98,7 +113,12 @@ int main(int argc, char *argv[])
 		colIndex = 0;
 		printf(" | ");
 		for(i=0; i<strlen(csv); i++) {
-			if(csv[i] == ',') { 
+		//ignore quotation marks when printing
+			if(csv[i] == '"' && checkQuotation(csv, i)) {
+				insideQuotation = !insideQuotation;
+				continue;
+			}
+			if(csv[i] == ',' && !insideQuotation) { 
 
 				if (csv[i+1] != '\n') {
 					for(j=printedChars; j<colspans[colIndex]; j++)
@@ -128,13 +148,18 @@ int main(int argc, char *argv[])
 	//print the bottom border
 	printBorder(colspans, cellpadding, colCount, longestRow);
 	fclose(fptr); 
+
+	//for testing 
+	/*
 	printf("\nRowLength: %d", longestRow);
 
 	printf("\n");
+
 	for(i=0; i<colCount; i++)
 	{
 		printf("%d\n", colspans[i]);
 	}
+	*/
 
 	return 0;
 }
@@ -157,3 +182,15 @@ void printBorder(int colspans[], int cellpadding, int colCount, int rowLength)
 	}
 	printf("+\n");
 }
+
+//should return true if quotation is valid (e.g. right before/after comma/newline) 
+bool checkQuotation(char csv[], int i)
+{
+	if(csv[i+1] == ',' || csv[i+1] == '\n')
+		return true;
+	if(csv[i-1] == ',' || csv[i+1] == '\n')
+		return true;
+
+	return false;
+}
+
